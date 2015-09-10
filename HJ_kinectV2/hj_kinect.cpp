@@ -11,13 +11,24 @@
 			    }
 
 // 初期化
-void HJ_Kinect::initialize()
+void HJ_Kinect::initialize( int sensor , int color , int depth)
 {
+	mode_sensor = COLOR | DEPTH;
+	//mode_sensor = sensor;
+
+	mode_color = SHOW | REC;
+	//mode_color = color;
+
+	mode_depth = SHOW | REC;
+	//mode_depth = depth;
+
 	initKinect();
-	initColor();
-	initDepth();
+
+	if (COLOR & mode_sensor)	initColor();
+	if (DEPTH & mode_sensor)	initDepth();
 }
 
+//DefaultKinectSensorを取得
 void HJ_Kinect::initKinect()
 {
 	// デフォルトのKinectを取得する
@@ -52,11 +63,14 @@ void HJ_Kinect::initColor()
 	colorBuffer.resize(colorWidth * colorHeight * colorBytesPerPixel);
 	cout << "[" << colorWidth << "," << colorHeight << "," << colorBytesPerPixel << "]" << endl;
 
+	
 	//VideoWriterを初期化
 	videosize_color = Size(colorWidth / 2, colorHeight / 2);
-	writer_color.open("unko_color.avi", CV_FOURCC_MACRO('M', 'J', 'P', 'G'), 30.0, videosize_color, true);
-
-	if (!writer_color.isOpened())	cout << "うんこ" << endl;
+	if (REC & mode_color)
+	{
+		writer_color.open("unko_color.avi", CV_FOURCC_MACRO('M', 'J', 'P', 'G'), 30.0, videosize_color, true);
+		if (!writer_color.isOpened())	cout << "うんこ" << endl;
+	}
 }
 
 void HJ_Kinect::initDepth()
@@ -87,9 +101,11 @@ void HJ_Kinect::initDepth()
 
 	//VideoWriterを初期化
 	videosize_depth = Size(depthWidth, depthHeight);
-	writer_depth.open("unko_depth.avi", CV_FOURCC_MACRO('M', 'J', 'P', 'G'), 30.0, videosize_depth, false);
-
-	if (!writer_depth.isOpened())	cout << "うんこ" << endl;
+	if (REC & mode_depth)
+	{
+		writer_depth.open("unko_depth.avi", CV_FOURCC_MACRO('M', 'J', 'P', 'G'), 30.0, videosize_depth, false);
+		if (!writer_depth.isOpened())	cout << "うんこ" << endl;
+	}
 }
 
 void HJ_Kinect::run()
@@ -109,8 +125,8 @@ void HJ_Kinect::run()
 // データの更新処理
 void HJ_Kinect::update()
 {
-	updateColorFrame();
-	updateDepthFrame();
+	if (COLOR & mode_sensor)	updateColorFrame();
+	if (DEPTH & mode_sensor)	updateDepthFrame();
 }
 
 // カラーフレームの更新
@@ -119,25 +135,24 @@ void HJ_Kinect::updateColorFrame()
 	// フレームを取得する
 	ComPtr<IColorFrame> colorFrame;
 	auto ret = colorFrameReader->AcquireLatestFrame(&colorFrame);
-	if (ret == S_OK){
-		// BGRAの形式でデータを取得する
-		ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray(
-			colorBuffer.size(), &colorBuffer[0], ColorImageFormat::ColorImageFormat_Bgra));
-
-
-		// カラーデータを表示,録画する
-		Mat colorImage(colorHeight, colorWidth, CV_8UC4, &colorBuffer[0]);
-		cvtColor(colorImage, colorImage, CV_BGRA2BGR);//BGRAからBGRへ変換
-
-		resize(colorImage, colorImage, videosize_color); //半分に縮小
-		flip(colorImage, colorImage, 1); // 左右反転
-
-		writer_color << colorImage;
-		imshow("Color Image", colorImage);
-
-		// スマートポインタを使ってない場合は、自分でフレームを解放する
-		// colorFrame->Release();
+	if (ret != S_OK){
+		return;
 	}
+
+	// BGRAの形式でデータを取得する
+	ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray(
+		colorBuffer.size(), &colorBuffer[0], ColorImageFormat::ColorImageFormat_Bgra));
+
+	// カラーデータを録画する
+	colorImage = Mat(colorHeight, colorWidth, CV_8UC4, &colorBuffer[0]);
+	cvtColor(colorImage, colorImage, CV_BGRA2BGR);//BGRAからBGRへ変換
+
+	resize(colorImage, colorImage, videosize_color); //半分に縮小
+	flip(colorImage, colorImage, 1); // 左右反転
+
+	if (REC & mode_color)	writer_color << colorImage;
+
+	// colorFrame->Release();
 }
 
 void HJ_Kinect::updateDepthFrame()
@@ -153,7 +168,7 @@ void HJ_Kinect::updateDepthFrame()
 	ERROR_CHECK(depthFrame->CopyFrameDataToArray(depthBuffer.size(), &depthBuffer[0]));
 
 	// Depthデータを表示する
-	cv::Mat depthImage(depthHeight, depthWidth, CV_8UC1);
+	depthImage = Mat(depthHeight, depthWidth, CV_8UC1);
 
 	// Depthデータを0-255のグレーデータにする
 	for (int i = 0; i < depthImage.total(); ++i){
@@ -163,14 +178,72 @@ void HJ_Kinect::updateDepthFrame()
 
 	flip(depthImage, depthImage, 1); // 左右反転
 
-	writer_depth << depthImage;
 
-	cv::imshow("Depth Image", depthImage);
+	if( REC & mode_depth ) writer_depth << depthImage;
 
-	// 自動解放を使わない場合には、フレームを解放する
 	// depthFrame->Release();
+}
+
+Point HJ_Kinect::minDepthPoint()
+{
+	int min_depth = maxDepthReliableDistance;
+	int depthPointX = 0;
+	int depthPointY = 0;
+
+	// 指定した範囲内で最も深度の浅い点を変数に代入
+	for (int index = depthHeight*depthWidth / 3; index < depthHeight*depthWidth * 2 / 3; index++){
+		if (min_depth > depthBuffer[index] && depthBuffer[index] != 0){
+			if (depthWidth / 3 < index % depthWidth && index % depthWidth < depthWidth * 2 / 3){
+				min_depth = depthBuffer[index];
+				depthPointX = index % depthWidth;
+				depthPointY = index / depthWidth;
+			}
+		}
+	}
+	
+	return Point(depthPointX, depthPointY);
+
 }
 
 void HJ_Kinect::draw()
 {
+	if (COLOR & mode_sensor)	drawColor();
+	if (DEPTH & mode_sensor)	drawDepth();
+}
+
+void HJ_Kinect::drawColor()
+{
+	colorImage = Mat(colorHeight, colorWidth, CV_8UC4, &colorBuffer[0]);
+	cvtColor(colorImage, colorImage, CV_BGRA2BGR);//BGRAからBGRへ変換
+
+	resize(colorImage, colorImage, videosize_color); //半分に縮小
+	flip(colorImage, colorImage, 1); // 左右反転
+
+	if (colorImage.empty())
+	{
+		cout << "うんこ" << endl;
+		return;
+	}
+	if (SHOW & mode_color)	imshow("Color Image", colorImage);
+}
+
+void HJ_Kinect::drawDepth()
+{
+	stringstream ss;
+	Point retPoint;
+
+	retPoint = minDepthPoint();
+
+	depthImage = Mat(depthHeight, depthWidth, CV_8UC1);
+	// Depthデータを0-255のグレーデータにする
+	for (int i = 0; i < depthImage.total(); ++i){
+		depthImage.data[i] = ~((depthBuffer[i] * 255) / maxDepthReliableDistance);
+	}
+
+	ss << depthBuffer[ retPoint.y * depthWidth + retPoint.x ] << "mm";
+	cv::circle(depthImage, retPoint, 5, cv::Scalar(0, 0, 255), 1);
+	flip(depthImage, depthImage, 1); // 左右反転
+	cv::putText(depthImage, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
+
+	if (SHOW & mode_depth)	cv::imshow("Depth Image", depthImage);
 }

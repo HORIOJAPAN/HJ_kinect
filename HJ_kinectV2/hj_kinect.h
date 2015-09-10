@@ -14,8 +14,9 @@ class HJ_Kinect
 {
 private:
 
-	//Kinect全般用
+	//Kinect全般用変数
 	IKinectSensor* kinect = nullptr;
+	unsigned char mode_sensor;
 
 	//Color用変数
 	IColorFrameReader* colorFrameReader = nullptr;
@@ -23,9 +24,12 @@ private:
 	int colorWidth;
 	int colorHeight;
 	unsigned int colorBytesPerPixel;
+	Mat colorImage;
 
 	VideoWriter writer_color;
 	Size videosize_color;
+
+	int mode_color;
 
 	//Depth用変数
 	IDepthFrameReader* depthFrameReader;
@@ -36,14 +40,20 @@ private:
 
 	int depthWidth;
 	int depthHeight;
+	Mat depthImage;
 
 	VideoWriter writer_depth;
 	Size videosize_depth;
 
+	int mode_depth;
+
 public:
+	//デバッグ用モード指定
+	enum { COLOR = 1 , DEPTH = 2};
+	enum { SHOW = 1 ,REC = 2 };
 
 	// 初期化
-	void initialize();
+	void initialize( int sensor = 3 , int color = 3 , int depth = 3);
 
 	// 実行
 	void run();
@@ -65,9 +75,13 @@ private:
 	// 深度フレームの更新
 	void updateDepthFrame();
 
+	//深度が最も小さい点を返す
+	Point minDepthPoint();
+
 	// 描画系
 	void draw();
-
+	void drawColor();
+	void drawDepth();
 };
 
 #endif
