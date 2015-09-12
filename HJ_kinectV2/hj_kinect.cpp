@@ -13,7 +13,7 @@
 // 初期化
 void HJ_Kinect::initialize( int sensor , int color , int depth)
 {
-	mode_sensor = COLOR | DEPTH;
+	mode_sensor = COLOR | DEPTH | BODYINDEX;
 	//mode_sensor = sensor;
 
 	mode_color = SHOW | REC;
@@ -22,10 +22,44 @@ void HJ_Kinect::initialize( int sensor , int color , int depth)
 	mode_depth = SHOW | REC;
 	//mode_depth = depth;
 
+	mode_bodyindex = SHOW | REC;
+	//mode_bodyindex = bodyindex;
+
 	initKinect();
 
 	if (COLOR & mode_sensor)	initColor();
 	if (DEPTH & mode_sensor)	initDepth();
+	if (BODYINDEX & mode_sensor)	initBodyIndex();
+}
+
+// 実行
+void HJ_Kinect::run()
+{
+	while (1) {
+		update();
+		draw();
+
+		auto key = cv::waitKey(1);
+		if (key == 'q'){
+			break;
+		}
+	}
+}
+
+// データの更新処理
+void HJ_Kinect::update()
+{
+	if (COLOR & mode_sensor)	updateColorFrame();
+	if (DEPTH & mode_sensor)	updateDepthFrame();
+	if (BODYINDEX & mode_sensor)	updateBodyIndexFrame();
+}
+
+// 描画処理
+void HJ_Kinect::draw()
+{
+	if (COLOR & mode_sensor)	drawColor();
+	if (DEPTH & mode_sensor)	drawDepth();
+	if (BODYINDEX & mode_sensor)	drawBodyIndex();
 }
 
 //DefaultKinectSensorを取得
@@ -108,25 +142,30 @@ void HJ_Kinect::initDepth()
 	}
 }
 
-void HJ_Kinect::run()
+void HJ_Kinect::initBodyIndex()
 {
-	while (1) {
-		update();
-		draw();
+	// ボディインデックスリーダーを取得する
+	ComPtr<IBodyIndexFrameSource> bodyIndexFrameSource;
+	ERROR_CHECK(kinect->get_BodyIndexFrameSource(&bodyIndexFrameSource));
+	ERROR_CHECK(bodyIndexFrameSource->OpenReader(&bodyIndexFrameReader));
 
-		auto key = cv::waitKey(1);
-		if (key == 'q'){
-			break;
-		}
-	}
-}
+	// ボディインデックスの解像度を取得する
+	ComPtr<IFrameDescription> bodyIndexFrameDescription;
+	ERROR_CHECK(bodyIndexFrameSource->get_FrameDescription(&bodyIndexFrameDescription));
+	bodyIndexFrameDescription->get_Width(&BodyIndexWidth);
+	bodyIndexFrameDescription->get_Height(&BodyIndexHeight);
 
+	// バッファーを作成する
+	bodyIndexBuffer.resize(BodyIndexWidth * BodyIndexHeight);
 
-// データの更新処理
-void HJ_Kinect::update()
-{
-	if (COLOR & mode_sensor)	updateColorFrame();
-	if (DEPTH & mode_sensor)	updateDepthFrame();
+	// プレイヤーの色を設定する
+	colors[0] = cv::Scalar(255, 0, 0);
+	colors[1] = cv::Scalar(0, 255, 0);
+	colors[2] = cv::Scalar(0, 0, 255);
+	colors[3] = cv::Scalar(255, 255, 0);
+	colors[4] = cv::Scalar(255, 0, 255);
+	colors[5] = cv::Scalar(0, 255, 255);
+
 }
 
 // カラーフレームの更新
@@ -184,6 +223,21 @@ void HJ_Kinect::updateDepthFrame()
 	// depthFrame->Release();
 }
 
+void HJ_Kinect::updateBodyIndexFrame()
+{
+	// フレームを取得する
+	ComPtr<IBodyIndexFrame> bodyIndexFrame;
+	auto ret = bodyIndexFrameReader->AcquireLatestFrame(&bodyIndexFrame);
+	if (ret != S_OK){
+		return;
+	}
+
+	// データを取得する
+	ERROR_CHECK(bodyIndexFrame->CopyFrameDataToArray(bodyIndexBuffer.size(), &bodyIndexBuffer[0]));
+
+	// bodyIndexFrame->Release();
+}
+
 Point HJ_Kinect::minDepthPoint()
 {
 	int min_depth = maxDepthReliableDistance;
@@ -203,12 +257,6 @@ Point HJ_Kinect::minDepthPoint()
 	
 	return Point(depthPointX, depthPointY);
 
-}
-
-void HJ_Kinect::draw()
-{
-	if (COLOR & mode_sensor)	drawColor();
-	if (DEPTH & mode_sensor)	drawDepth();
 }
 
 void HJ_Kinect::drawColor()
@@ -246,4 +294,28 @@ void HJ_Kinect::drawDepth()
 	cv::putText(depthImage, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
 
 	if (SHOW & mode_depth)	cv::imshow("Depth Image", depthImage);
+}
+
+void HJ_Kinect::drawBodyIndex()
+{
+	// ボディインデックスをカラーデータに変換して表示する
+	cv::Mat bodyIndexImage(BodyIndexHeight, BodyIndexWidth, CV_8UC4);
+
+	for (int i = 0; i < BodyIndexWidth * BodyIndexHeight; ++i){
+		int index = i * 4;
+		// 人がいれば255以外
+		if (bodyIndexBuffer[i] != 255){
+			auto color = colors[bodyIndexBuffer[i]];
+			bodyIndexImage.data[index + 0] = color[0];
+			bodyIndexImage.data[index + 1] = color[1];
+			bodyIndexImage.data[index + 2] = color[2];
+		}
+		else{
+			bodyIndexImage.data[index + 0] = 0;
+			bodyIndexImage.data[index + 1] = 0;
+			bodyIndexImage.data[index + 2] = 0;
+		}
+	}
+
+	if (SHOW & mode_depth)	imshow("BodyIndex Image", bodyIndexImage);
 }

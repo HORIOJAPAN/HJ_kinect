@@ -15,19 +15,19 @@ class HJ_Kinect
 private:
 
 	//Kinect全般用変数
-	IKinectSensor* kinect = nullptr;
-	unsigned char mode_sensor;
+	IKinectSensor* kinect;
+	unsigned char mode_sensor;//利用するセンサーの種類
 
 	//Color用変数
-	IColorFrameReader* colorFrameReader = nullptr;
+	IColorFrameReader* colorFrameReader;
 	std::vector<BYTE> colorBuffer;
 	int colorWidth;
 	int colorHeight;
 	unsigned int colorBytesPerPixel;
 	Mat colorImage;
 
-	VideoWriter writer_color;
-	Size videosize_color;
+	VideoWriter writer_color;//録画用オブジェクト
+	Size videosize_color;//録画時の画像サイズ
 
 	int mode_color;
 
@@ -42,14 +42,24 @@ private:
 	int depthHeight;
 	Mat depthImage;
 
-	VideoWriter writer_depth;
-	Size videosize_depth;
+	VideoWriter writer_depth;//録画用オブジェクト
+	Size videosize_depth;//録画時の画像サイズ
 
 	int mode_depth;
 
+	//BodyIndex用変数
+	IBodyIndexFrameReader* bodyIndexFrameReader;
+	int BodyIndexWidth;
+	int BodyIndexHeight;
+	std::vector<BYTE> bodyIndexBuffer;
+
+	cv::Scalar colors[6];
+
+	int mode_bodyindex;
+
 public:
 	//デバッグ用モード指定
-	enum { COLOR = 1 , DEPTH = 2};
+	enum { COLOR = 1 , DEPTH = 2 , BODYINDEX = 4 };
 	enum { SHOW = 1 ,REC = 2 };
 
 	// 初期化
@@ -66,6 +76,8 @@ private:
 	void initColor();
 	//Depthの初期化
 	void initDepth();
+	//BodyIndexの初期化
+	void initBodyIndex();
 
 	// データの更新処理
 	void update();
@@ -74,6 +86,8 @@ private:
 	void updateColorFrame();
 	// 深度フレームの更新
 	void updateDepthFrame();
+	// BodyIndexフレームの更新
+	void updateBodyIndexFrame();
 
 	//深度が最も小さい点を返す
 	Point minDepthPoint();
@@ -82,6 +96,7 @@ private:
 	void draw();
 	void drawColor();
 	void drawDepth();
+	void drawBodyIndex();
 };
 
 #endif
