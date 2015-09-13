@@ -297,6 +297,7 @@ void HJ_Kinect::drawDepth()
 		cv::polylines(depthImage, *contour, true, cv::Scalar(0, 255, 0), 2);
 	}
 	
+
 	//—ÖŠs‚Ì”
 	int roiCnt = 0;
 
