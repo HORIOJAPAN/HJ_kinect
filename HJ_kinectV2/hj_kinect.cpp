@@ -3,12 +3,16 @@
 #include <iostream>
 #include <sstream>
 
+int minDepthBuffer;//なんとなく
+
 #define ERROR_CHECK( ret )  \
     if ( (ret) != S_OK ) {    \
         std::stringstream ss;	\
         ss << "failed " #ret " " << std::hex << ret << std::endl;			\
         throw std::runtime_error( ss.str().c_str() );			\
 			    }
+
+
 
 // 初期化
 void HJ_Kinect::initialize( int sensor , int color , int depth)
@@ -211,7 +215,13 @@ void HJ_Kinect::updateDepthFrame()
 
 	// Depthデータを0-255のグレーデータにする
 	for (int i = 0; i < depthImage.total(); ++i){
-		depthImage.data[i] = ~((depthBuffer[i] * 255) / maxDepthReliableDistance);
+		if (depthBuffer[i] > 1){
+
+			depthImage.data[i] = 255;
+
+		}
+		else
+		depthImage.data[i] = ~((depthBuffer[i] *255) / maxDepthReliableDistance);
 		//depthImage.data[i] = ~((depthBuffer[i] * 255) / 8000);
 	}
 
@@ -246,15 +256,17 @@ Point HJ_Kinect::minDepthPoint()
 
 	// 指定した範囲内で最も深度の浅い点を変数に代入
 	for (int index = depthHeight*depthWidth / 3; index < depthHeight*depthWidth * 2 / 3; index++){
-		if (min_depth > depthBuffer[index] && depthBuffer[index] != 0){
-			if (depthWidth / 3 < index % depthWidth && index % depthWidth < depthWidth * 2 / 3){
+		if (min_depth > depthBuffer[index]&& depthBuffer[index] != 0){
+
+			if (depthWidth / 3 < index % depthWidth && index % depthWidth < depthWidth * 2 / 3){//指定範囲内を探す
 				min_depth = depthBuffer[index];
 				depthPointX = index % depthWidth;
 				depthPointY = index / depthWidth;
 			}
+			
 		}
 	}
-	
+	minDepthBuffer = min_depth ;//なんとなく
 	return Point(depthPointX, depthPointY);
 
 }
@@ -280,12 +292,18 @@ void HJ_Kinect::drawDepth()
 	stringstream ss;
 	Point retPoint;
 
+	uchar minDepthBuffer2;//なんとなくuchar
+
 	retPoint = minDepthPoint();
 
 	depthImage = Mat(depthHeight, depthWidth, CV_8UC1);
 	// Depthデータを0-255のグレーデータにする
+	minDepthBuffer2 = ~((minDepthBuffer * 255) / maxDepthReliableDistance);
 	for (int i = 0; i < depthImage.total(); ++i){
 		depthImage.data[i] = ~((depthBuffer[i] * 255) / maxDepthReliableDistance);
+		if (depthImage.data[i] < (minDepthBuffer2-50)){//なんとなく
+			depthImage.data[i] = 0;
+		}
 	}
 
 	//Canny(depthImage, depthImage, 50, 100);
