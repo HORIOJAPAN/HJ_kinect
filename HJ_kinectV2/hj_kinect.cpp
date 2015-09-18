@@ -5,6 +5,8 @@
 
 int minDepthBuffer;//なんとなく
 
+int box_count = 0;//なんなとく
+
 #define ERROR_CHECK( ret )  \
     if ( (ret) != S_OK ) {    \
         std::stringstream ss;	\
@@ -253,6 +255,8 @@ Point HJ_Kinect::minDepthPoint()
 	int min_depth = maxDepthReliableDistance;
 	int depthPointX = 0;
 	int depthPointY = 0;
+	box_count = 0;
+	int min_num = 0;
 
 	// 指定した範囲内で最も深度の浅い点を変数に代入
 	for (int index = depthHeight*depthWidth / 3; index < depthHeight*depthWidth * 2 / 3; index++){
@@ -260,12 +264,38 @@ Point HJ_Kinect::minDepthPoint()
 
 			if (depthWidth / 3 < index % depthWidth && index % depthWidth < depthWidth * 2 / 3){//指定範囲内を探す
 				min_depth = depthBuffer[index];
+				min_num = index;
 				depthPointX = index % depthWidth;
 				depthPointY = index / depthWidth;
 			}
 			
 		}
 	}
+
+	for (int i = min_num; i / depthWidth == min_num / depthWidth; i++)
+	{
+		
+	
+		if (depthBuffer[i] > min_depth + 200)
+		{
+			break;
+		}
+			
+
+		box_count++;
+	}
+
+	for (int i = min_num; depthBuffer[i] > min_depth+ 200; i--)
+	{
+
+		if (i % depthWidth !=  min_num % depthWidth)
+			break;
+
+		box_count++;
+	}
+
+
+
 	minDepthBuffer = min_depth ;//なんとなく
 	return Point(depthPointX, depthPointY);
 
@@ -362,6 +392,8 @@ void HJ_Kinect::drawDepth()
 	}*/
 
 	ss << depthBuffer[ retPoint.y * depthWidth + retPoint.x ] << "mm";
+	printf("幅＝%d",box_count);
+
 	cv::circle(depthImage, retPoint, 5, cv::Scalar(0, 0, 255), 1);
 	flip(depthImage, depthImage, 1); // 左右反転
 	cv::putText(depthImage, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
