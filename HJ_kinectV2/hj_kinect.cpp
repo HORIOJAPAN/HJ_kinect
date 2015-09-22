@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <sstream>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 int minDepthBuffer;//‚È‚ñ‚Æ‚È‚­
 
@@ -393,6 +395,7 @@ void HJ_Kinect::drawDepth()
 
 	ss << depthBuffer[ retPoint.y * depthWidth + retPoint.x ] << "mm";
 	printf("•%d",box_count);
+	printf("X=%lf\n", ((box_count* depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35*M_PI/180.0)) / 256));
 
 	cv::circle(depthImage, retPoint, 5, cv::Scalar(0, 0, 255), 1);
 	flip(depthImage, depthImage, 1); // ¶‰E”½“]
