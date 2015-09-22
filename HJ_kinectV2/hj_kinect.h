@@ -42,6 +42,8 @@ private:
 	int depthHeight;
 	Mat depthImage;
 
+	Point hasikko[2];
+
 	VideoWriter writer_depth;//録画用オブジェクト
 	Size videosize_depth;//録画時の画像サイズ
 

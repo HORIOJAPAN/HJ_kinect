@@ -21,7 +21,7 @@ int box_count = 0;//なんなとく
 // 初期化
 void HJ_Kinect::initialize( int sensor , int color , int depth)
 {
-	mode_sensor = COLOR | DEPTH | BODYINDEX;
+	mode_sensor = DEPTH;
 	//mode_sensor = sensor;
 
 	mode_color = SHOW | REC;
@@ -52,6 +52,7 @@ void HJ_Kinect::run()
 			break;
 		}
 	}
+	waitKey(0);
 }
 
 // データの更新処理
@@ -258,7 +259,7 @@ Point HJ_Kinect::minDepthPoint()
 	int depthPointX = 0;
 	int depthPointY = 0;
 	box_count = 0;
-	int min_num = 0;
+	int min_num = 30;
 
 	// 指定した範囲内で最も深度の浅い点を変数に代入
 	for (int index = depthHeight*depthWidth / 3; index < depthHeight*depthWidth * 2 / 3; index++){
@@ -280,6 +281,8 @@ Point HJ_Kinect::minDepthPoint()
 	
 		if (depthBuffer[i] > min_depth + 200)
 		{
+			hasikko[0].x = i % depthWidth;
+			hasikko[0].y = i / depthWidth;
 			break;
 		}
 			
@@ -287,11 +290,18 @@ Point HJ_Kinect::minDepthPoint()
 		box_count++;
 	}
 
-	for (int i = min_num; depthBuffer[i] > min_depth+ 200; i--)
+	for (int i = min_num; i / depthWidth == min_num / depthWidth; i--)
 	{
 
-		if (i % depthWidth !=  min_num % depthWidth)
+		if (i<0)
 			break;
+
+		if (depthBuffer[i] > min_depth + 200)
+		{
+			hasikko[1].x = i % depthWidth;
+			hasikko[1].y = i / depthWidth;
+			break;
+		}
 
 		box_count++;
 	}
@@ -325,6 +335,8 @@ void HJ_Kinect::drawDepth()
 	Point retPoint;
 
 	uchar minDepthBuffer2;//なんとなくuchar
+
+	Mat color_depth(depthImage.cols, depthImage.rows, CV_8UC3);
 
 	retPoint = minDepthPoint();
 
@@ -398,10 +410,25 @@ void HJ_Kinect::drawDepth()
 	printf("X=%lf\n", ((box_count* depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35*M_PI/180.0)) / 256));
 
 	cv::circle(depthImage, retPoint, 5, cv::Scalar(0, 0, 255), 1);
-	flip(depthImage, depthImage, 1); // 左右反転
-	cv::putText(depthImage, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
 
-	if (SHOW & mode_depth)	cv::imshow("Depth Image", depthImage);
+	cvtColor(depthImage, color_depth, CV_GRAY2BGR);
+	color_depth.at<Vec3b>(hasikko[0]) = Vec3b(200, 0, 200);
+	cv::circle(color_depth, hasikko[0], 10, cv::Scalar(0, 200, 0), 3, 4);
+	color_depth.at<Vec3b>(hasikko[1]) = Vec3b(200, 0, 200);
+	cv::circle(color_depth, hasikko[1], 10, cv::Scalar(0, 0, 200), 3, 4);
+
+	//flip(depthImage, depthImage, 1); // 左右反転
+	//cv::putText(depthImage, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
+
+
+	flip(color_depth, color_depth, 1); // 左右反転
+	cv::putText(color_depth, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
+
+	
+
+
+
+	if (SHOW & mode_depth)	cv::imshow("Depth Image", color_depth);
 }
 
 void HJ_Kinect::drawBodyIndex()

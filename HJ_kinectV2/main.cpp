@@ -9,5 +9,6 @@ void main()
 	}
 	catch (std::exception& ex){
 		std::cout << ex.what() << std::endl;
+		cv::waitKey(0);
 	}
 }
