@@ -7,7 +7,11 @@
 
 int minDepthBuffer;//なんとなく
 
-int box_count = 0;//なんなとく
+
+#define MAX_OBJECT = 100;//なんとなく
+int box_count[100] = {0};//なんなとく
+int NUM_OBJECT = 0;//なんとなく
+
 
 #define ERROR_CHECK( ret )  \
     if ( (ret) != S_OK ) {    \
@@ -258,14 +262,21 @@ Point HJ_Kinect::minDepthPoint()
 	int min_depth = maxDepthReliableDistance;
 	int depthPointX = 0;
 	int depthPointY = 0;
-	box_count = 0;
-	int min_num = 30;
+	int min_num = 0;
+	
+	int flag = 0;//くそきたないフラッグ
+
+	NUM_OBJECT = 1;//最近傍のオブジェクト挿入済み
+
+	for (int i = 0 ; i < NUM_OBJECT ; i ++ ){//なんとなく
+		box_count[i] = 0;
+	}
 
 	// 指定した範囲内で最も深度の浅い点を変数に代入
-	for (int index = depthHeight*depthWidth / 3; index < depthHeight*depthWidth * 2 / 3; index++){
+	for (int index = depthHeight*depthWidth * 2 / 5; index < depthHeight*depthWidth * 4 / 5 ; index++){
 		if (min_depth > depthBuffer[index]&& depthBuffer[index] != 0){
 
-			if (depthWidth / 3 < index % depthWidth && index % depthWidth < depthWidth * 2 / 3){//指定範囲内を探す
+			if (depthWidth * 2 / 5 < index % depthWidth && index % depthWidth < depthWidth * 4 / 5 ){//指定範囲内を探す
 				min_depth = depthBuffer[index];
 				min_num = index;
 				depthPointX = index % depthWidth;
@@ -287,7 +298,7 @@ Point HJ_Kinect::minDepthPoint()
 		}
 			
 
-		box_count++;
+		box_count[0]++;
 	}
 
 	for (int i = min_num; i / depthWidth == min_num / depthWidth; i--)
@@ -303,9 +314,22 @@ Point HJ_Kinect::minDepthPoint()
 			break;
 		}
 
-		box_count++;
+		box_count[0]++;
 	}
 
+
+	for (int i = (int(min_num / depthWidth) * depthWidth); i < ( int(min_num / depthWidth) * depthWidth ) + depthWidth; i++)//なんとなくくっそきたない処理
+	{
+		if (depthBuffer[i] > min_depth + 200)
+		{
+			flag = 0;
+			box_count[NUM_OBJECT]++;
+		}
+		else if (flag == 0){
+			NUM_OBJECT++;
+			flag = 1;
+		}
+	}
 
 
 	minDepthBuffer = min_depth ;//なんとなく
@@ -405,9 +429,24 @@ void HJ_Kinect::drawDepth()
 		i++;
 	}*/
 
+
+
+
+
+
+
+
 	ss << depthBuffer[ retPoint.y * depthWidth + retPoint.x ] << "mm";
-	printf("幅＝%d",box_count);
-	printf("X=%lf\n", ((box_count* depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35*M_PI/180.0)) / 256));
+	printf("再近傍幅＝%d",box_count[0]);
+	printf("X=%lf\n", ((box_count[0]* depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35*M_PI/180.0)) / 256));
+	printf("オブジェクト数は　%d でございます。\n", NUM_OBJECT);
+	
+	for (int i = 0; i < NUM_OBJECT ; i ++ )//なんとなく
+	{
+		printf("オブジェクト　%d　について\n",(i+1));
+		printf("幅＝%d", box_count[i+1]);
+		printf("X=%lf\n", ((box_count[i+1] * depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35 * M_PI / 180.0)) / 256));
+	}
 
 	cv::circle(depthImage, retPoint, 5, cv::Scalar(0, 0, 255), 1);
 
