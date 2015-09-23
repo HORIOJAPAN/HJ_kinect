@@ -350,61 +350,6 @@ void HJ_Kinect::drawDepth()
 		}
 	}
 
-	//Canny(depthImage, depthImage, 50, 100);
-	/*
-	vector<vector<Point>> contours;
-	findContours(depthImage, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-	// ŒŸo‚³‚ê‚½—ÖŠsü‚ğ—Î‚Å•`‰æ
-	for (auto contour = contours.begin(); contour != contours.end(); contour++){
-		cv::polylines(depthImage, *contour, true, cv::Scalar(0, 255, 0), 2);
-	}
-	
-
-	//—ÖŠs‚Ì”
-	int roiCnt = 0;
-
-	//—ÖŠs‚ÌƒJƒEƒ“ƒg   
-	int i = 0;
-
-	for (auto contour = contours.begin(); contour != contours.end(); contour++){
-
-		std::vector< cv::Point > approx;
-
-		//—ÖŠs‚ğ’¼ü‹ß—‚·‚é
-		cv::approxPolyDP(cv::Mat(*contour), approx, 0.01 * cv::arcLength(*contour, true), true);
-
-		// ‹ß—‚Ì–ÊÏ‚ªˆê’èˆÈã‚È‚çæ“¾
-		double area = cv::contourArea(approx);
-
-		if (area > 1000.0){
-			//Â‚ÅˆÍ‚Şê‡            
-			cv::polylines(depthImage, approx, true, cv::Scalar(255, 0, 0), 2);
-			std::stringstream sst;
-			sst << "area : " << area;
-			cv::putText(depthImage, sst.str(), approx[0], CV_FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0, 128, 0));
-
-			//—ÖŠs‚É—×Ú‚·‚é‹éŒ`‚Ìæ“¾
-			cv::Rect brect = cv::boundingRect(cv::Mat(approx).reshape(2));
-			//roi[roiCnt] = cv::Mat(depthImage, brect);
-
-			//“ü—Í‰æ‘œ‚É•\¦‚·‚éê‡
-			cv::drawContours(depthImage, contours, i, CV_RGB(0, 0, 255), 4);
-
-			//•\¦
-			//cv::imshow("label" + std::to_string(roiCnt + 1), roi[roiCnt]);
-
-			roiCnt++;
-
-			//”O‚Ì‚½‚ß—ÖŠs‚ğƒJƒEƒ“ƒg
-			if (roiCnt == 99)
-			{
-				break;
-			}
-		}
-
-		i++;
-	}*/
-
 	ss << depthBuffer[ retPoint.y * depthWidth + retPoint.x ] << "mm";
 	printf("•%d",box_count);
 	printf("X=%lf\n", ((box_count* depthBuffer[retPoint.y * depthWidth + retPoint.x] * tan(35*M_PI/180.0)) / 256));
@@ -423,10 +368,6 @@ void HJ_Kinect::drawDepth()
 
 	flip(color_depth, color_depth, 1); // ¶‰E”½“]
 	cv::putText(color_depth, ss.str(), retPoint, 0, 1, cv::Scalar(0, 255, 255));
-
-	
-
-
 
 	if (SHOW & mode_depth)	cv::imshow("Depth Image", color_depth);
 }
